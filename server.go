@@ -18,6 +18,7 @@ type Server struct {
 	Message chan string
 
 }
+
 // NewServer 创建一个新的服务器
 func NewServer(ip string, port int) *Server{
 	server := &Server{
@@ -28,6 +29,7 @@ func NewServer(ip string, port int) *Server{
 	}
 	return server
 }
+
 // 监听广播消息的方法
 func(s *Server) ListenMessage(){
 	for{
@@ -58,6 +60,20 @@ func (s *Server)handle(conn net.Conn){
 	s.mapLock.Unlock()
 	//用户上线，广播用户上线消息
 	s.Broadcast(user, "上线了")
+
+	//接收客户端发送的消息
+	for{
+		buf := make([]byte, 4096)
+		n, err :=conn.Read(buf)
+		if err!= nil{
+			fmt.Printf("读取客户端消息失败 err:%v \n",err)
+			continue
+		}
+		// 转换为字符串
+		msg := string(buf[:n])
+		// 广播消息
+		s.Broadcast(user, msg)
+	}
 }
 
 func (s *Server) Start(){
