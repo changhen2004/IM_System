@@ -53,26 +53,25 @@ func(s *Server) Broadcast(user *User, msg string){
 func (s *Server)handle(conn net.Conn){
 	defer conn.Close()
 	//fmt.Println("连接成功")
-	user := NewUser(conn)
-	//用户上线，将用户添加到在线用户列表中
-	s.mapLock.Lock()
-	s.OnlineMap[user.Addr] = user
-	s.mapLock.Unlock()
-	//用户上线，广播用户上线消息
-	s.Broadcast(user, "上线了")
+	user := NewUser(conn, s)
+	user.OnLine()
 
 	//接收客户端发送的消息
 	for{
 		buf := make([]byte, 4096)
 		n, err :=conn.Read(buf)
+		if n == 0{
+			user.OffLine()
+			return
+		}
 		if err!= nil{
 			fmt.Printf("读取客户端消息失败 err:%v \n",err)
-			continue
+			return
 		}
 		// 转换为字符串
 		msg := string(buf[:n])
-		// 广播消息
-		s.Broadcast(user, msg)
+		// 用户广播消息
+		user.DoMessage(msg)
 	}
 }
 
@@ -91,7 +90,7 @@ func (s *Server) Start(){
 		conn,err := listen.Accept()
 		if err != nil{
 			fmt.Printf("接受连接失败 err:%v \n",err)
-			continue
+			return
 		}
 		// handle
 		go s.handle(conn)
