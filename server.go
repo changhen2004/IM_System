@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 	"strconv"
+	"time"
 )
 
 type Server struct {
@@ -56,22 +57,44 @@ func (s *Server)handle(conn net.Conn){
 	user := NewUser(conn, s)
 	user.OnLine()
 
+	//监听用户是否活跃的channel
+	isLive := make(chan bool)
+
 	//接收客户端发送的消息
+	go func(){
+			for{
+				buf := make([]byte, 4096)
+			n, err :=conn.Read(buf)
+			if n == 0{
+				user.OffLine()
+				return
+			}
+			if err!= nil{
+				fmt.Printf("读取客户端消息失败 err:%v \n",err)
+				return
+			}
+			// 转换为字符串
+			msg := string(buf[:n])
+			// 用户广播消息
+			user.DoMessage(msg)
+
+			// 标记用户活跃
+			isLive <- true
+		}
+	}()
+
+	//当前handle堵塞
 	for{
-		buf := make([]byte, 4096)
-		n, err :=conn.Read(buf)
-		if n == 0{
-			user.OffLine()
+		select{		
+		case <- isLive:
+			//当前用户活跃，重置超时时间
+		case <-time.After(time.Second *10):
+			
+			user.C <- "用户" + user.Addr + "已超时下线\n"
+			close(user.C)
+			conn.Close()
 			return
 		}
-		if err!= nil{
-			fmt.Printf("读取客户端消息失败 err:%v \n",err)
-			return
-		}
-		// 转换为字符串
-		msg := string(buf[:n])
-		// 用户广播消息
-		user.DoMessage(msg)
 	}
 }
 
