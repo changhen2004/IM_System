@@ -63,7 +63,7 @@ func(u *User) DoMessage(msg string){
 			u.server.OnlineMap[newName] = u
 			u.server.mapLock.Unlock()
 			u.Name = newName
-			u.C <- "重命名成功\n"
+			u.C <- "用户名已更新为：" + newName + "\n"
 			return
 		}
 	}else if len(msg) > 4 && msg[:4] == "to|" {
